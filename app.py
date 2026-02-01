@@ -2,127 +2,68 @@ import streamlit as st
 import os
 import sys
 
-# 1. PAGE CONFIG
-try:
-    st.set_page_config(page_title="HR Insight Dashboard", layout="wide", page_icon="🏢")
-except Exception as e:
-    st.error(f"Page Config Error: {e}")
+# 1. Immediate Page Config
+st.set_page_config(page_title="Diagnostic Mode", layout="wide")
 
-# 2. IMPORTS WRAPPER
+st.title("🛠️ System Diagnostic Mode")
+st.write("If you can see this, Streamlit is running!")
+
+# 2. Check Python Environment
+st.subheader("1. Environment Details")
+st.write(f"Python Version: {sys.version}")
+st.write(f"Current Directory: {os.getcwd()}")
+
+# 3. Check File System
+st.subheader("2. File System Check")
+if os.path.exists("data"):
+    st.success("found 'data' folder")
+    files = os.listdir("data")
+    st.write(f"Files in data/: {files}")
+else:
+    st.error("'data' folder NOT found!")
+    st.write(f"Root files: {os.listdir('.')}")
+
+# 4. Check Dependencies
+st.subheader("3. Dependency Check")
 try:
     import pandas as pd
-    import numpy as np
-    import joblib
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from sklearn.ensemble import RandomForestClassifier
+    st.success(f"Pandas imported: {pd.__version__}")
+except ImportError as e:
+    st.error(f"Pandas missing: {e}")
+
+try:
+    import sklearn
+    st.success(f"Scikit-learn imported: {sklearn.__version__}")
+except ImportError as e:
+    st.error(f"Scikit-learn missing: {e}")
+
+try:
+    import plotly
+    st.success(f"Plotly imported: {plotly.__version__}")
+except ImportError as e:
+    st.error(f"Plotly missing: {e}")
+
+# 5. Attempt Data Load
+st.subheader("4. Data Load Test")
+try:
+    df = pd.read_excel("data/hr_analytics.xlsx")
+    st.success(f"Data loaded successfully! Shape: {df.shape}")
+    st.dataframe(df.head())
 except Exception as e:
-    st.error(f"Import Error: Missing library? Details: {e}")
-    st.stop()
+    st.error(f"Failed to load data: {e}")
 
-# 3. GLOBAL STYLE
-st.markdown("""
-<style>
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-</style>
-""", unsafe_allow_html=True)
-
-# 4. ROBUST LOADER
-@st.cache_data
-def get_data():
-    path = 'data/hr_analytics.xlsx'
-    if not os.path.exists(path):
-        return None, f"File not found at {path}. Current Dir: {os.getcwd()}"
-    try:
-        return pd.read_excel(path), None
-    except Exception as e:
-        return None, str(e)
-
-@st.cache_resource
-def get_model(df):
-    try:
-        # Simplest possible fallback: Always train fresh on cloud to avoid OS pickle issues
-        df_model = pd.get_dummies(df, columns=['Department', 'salary'], drop_first=True)
-        X = df_model.drop('left', axis=1)
-        y = df_model['left']
-        model = RandomForestClassifier(n_estimators=50, max_depth=10, random_state=42) # Lighter model
-        model.fit(X, y)
-        return model, list(X.columns), None
-    except Exception as e:
-        return None, None, str(e)
-
-# 5. INITIALIZATION
-with st.spinner("Initializing Dashboard..."):
-    df, err = get_data()
-    if err:
-        st.error(f"CRITICAL: Data Load Failed. {err}")
-        st.stop()
-
-    model, features, err = get_model(df)
-    if err:
-        st.error(f"CRITICAL: Model Training Failed. {err}")
-        st.stop()
-
-# 6. SIDEBAR
-st.sidebar.title("🏢 HR Insights Pro")
-st.sidebar.info("v2.3 Safe Mode | Auto-Healing Enabled")
-
-# 7. MAIN UI
-st.title("HR Analytics & Retention Dashboard")
-m1, m2, m3, m4 = st.columns(4)
-attrition_rate = (df['left'].mean() * 100)
-with m1: st.metric("Attrition Rate", f"{attrition_rate:.1f}%")
-with m2: st.metric("Total Workforce", f"{len(df):,}")
-with m3: st.metric("Avg Satisfaction", f"{df['satisfaction_level'].mean():.2f}")
-with m4: st.metric("Avg Monthly Hours", f"{df['average_montly_hours'].mean():.0f}h")
-
-st.markdown("---")
-
-tab1, tab2 = st.tabs(["🔮 Predict Attrition", "📊 Workforce Analytics"])
-
-with tab1:
-    st.header("Predict Individual Employee Risk")
-    with st.expander("📝 Employee Input Form", expanded=True):
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.5)
-            last_eval = st.slider("Last Evaluation", 0.0, 1.0, 0.7)
-            num_projects = st.number_input("Number of Projects", 1, 10, 3)
-        with col2:
-            avg_hours = st.number_input("Average Monthly Hours", 50, 350, 200)
-            tenure = st.number_input("Tenure (Years)", 1, 15, 3)
-            accident = st.selectbox("Work Accident?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
-        with col3:
-            promotion = st.selectbox("Recent Promotion?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
-            dept = st.selectbox("Department", df['Department'].unique())
-            salary = st.selectbox("Salary Level", ['low', 'medium', 'high'])
-
-    if st.button("🚀 Analyze Risk Instance"):
-        input_df = pd.DataFrame(columns=features)
-        input_df.loc[0] = 0
-        input_df.at[0, 'satisfaction_level'] = satisfaction
-        input_df.at[0, 'last_evaluation'] = last_eval
-        input_df.at[0, 'number_project'] = num_projects
-        input_df.at[0, 'average_montly_hours'] = avg_hours
-        input_df.at[0, 'time_spend_company'] = tenure
-        input_df.at[0, 'Work_accident'] = accident
-        input_df.at[0, 'promotion_last_5years'] = promotion
-        
-        dept_col = f"Department_{dept}"
-        if dept_col in input_df.columns: input_df.at[0, dept_col] = 1
-        salary_col = f"salary_{salary}"
-        if salary_col in input_df.columns: input_df.at[0, salary_col] = 1
-
-        prob = model.predict_proba(input_df)[0][1]
-        
-        res_col1, res_col2 = st.columns([1, 2])
-        with res_col1:
-            st.metric("Attrition Probability", f"{prob*100:.1f}%")
-        with res_col2:
-            if prob > 0.5: st.error("High Risk")
-            else: st.success("Low Risk")
-
-with tab2:
-    st.header("Workforce Insights")
-    st.bar_chart(df['Department'].value_counts()) # Fallback to native charts if Plotly fails (unlikely)
-    
+# 6. Attempt Model Train
+st.subheader("5. Model Training Test")
+try:
+    from sklearn.ensemble import RandomForestClassifier
+    st.write("Training dummy model...")
+    # Train on a tiny fraction just to test imports/logic
+    df_small = df.head(50)
+    df_model = pd.get_dummies(df_small, columns=['Department', 'salary'], drop_first=True)
+    X = df_model.drop('left', axis=1)
+    y = df_model['left']
+    model = RandomForestClassifier(n_estimators=10, random_state=42)
+    model.fit(X, y)
+    st.success("Model trained successfully!")
+except Exception as e:
+    st.error(f"Model training failed: {e}")
