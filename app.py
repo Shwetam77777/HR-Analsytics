@@ -23,12 +23,23 @@ st.markdown("""
 
 @st.cache_resource
 def load_assets():
-    model = joblib.load('models/hr_model.joblib')
-    features = joblib.load('models/features.joblib')
-    df = pd.read_excel('data/hr_analytics.xlsx')
-    return model, features, df
+    try:
+        model = joblib.load('models/hr_model.joblib')
+        features = joblib.load('models/features.joblib')
+        df = pd.read_excel('data/hr_analytics.xlsx')
+        return model, features, df
+    except:
+        # Fallback: Train model on the fly if file is missing (useful for first-time cloud deploy)
+        df = pd.read_excel('data/hr_analytics.xlsx')
+        df_model = pd.get_dummies(df, columns=['Department', 'salary'], drop_first=True)
+        X = df_model.drop('left', axis=1)
+        y = df_model['left']
+        model = RandomForestClassifier(n_estimators=100, random_state=42)
+        model.fit(X, y)
+        return model, list(X.columns), df
 
 try:
+    from sklearn.ensemble import RandomForestClassifier # Ensure imported for fallback
     model, features, df = load_assets()
 except Exception as e:
     st.error(f"Initialization Error: {e}. Please run 'python scripts/train_model.py' first.")
