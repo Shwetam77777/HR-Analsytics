@@ -4,6 +4,23 @@
 [![Streamlit](https://img.shields.io/badge/Streamlit-App-red)](https://streamlit.io/)
 [![ML](https://img.shields.io/badge/ML-RandomForest%20|%20XGBoost-orange)](https://scikit-learn.org/)
 
+---
+
+## ⚡ Run This First (Quick Start)
+To get the project up and running in less than 2 minutes:
+
+1. **Install Dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Launch the Dashboard**:
+   ```bash
+   streamlit run app.py
+   ```
+*This will open the interactive attrition predictor in your default browser.*
+
+---
+
 ## 📌 Project Overview
 Successfully predicting employee attrition is vital for any organization. This project leverages **HR Analytics** to identify factors driving employee turnover and provides an interactive tool for predicting potential attrition using state-of-the-art machine learning models.
 
