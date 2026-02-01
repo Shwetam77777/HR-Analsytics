@@ -10,45 +10,59 @@ import os
 # Page Configuration
 st.set_page_config(page_title="HR Insight Dashboard", layout="wide", page_icon="🏢")
 
-# Global Styles
+# Custom Metric Styling
 st.markdown("""
 <style>
-    .metric-card {
-        background-color: white;
-        padding: 20px;
+    .stMetric {
+        background-color: #ffffff;
+        padding: 15px;
         border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        text-align: center;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 </style>
 """, unsafe_allow_html=True)
 
+@st.cache_data
+def load_data():
+    try:
+        return pd.read_excel('data/hr_analytics.xlsx')
+    except Exception as e:
+        st.error(f"Error loading Excel data: {e}")
+        return None
+
 @st.cache_resource
-def load_assets():
+def load_model():
     # Attempt to load pre-trained assets
     if os.path.exists('models/hr_model.joblib') and os.path.exists('models/features.joblib'):
         try:
             model = joblib.load('models/hr_model.joblib')
             features = joblib.load('models/features.joblib')
-            df = pd.read_excel('data/hr_analytics.xlsx')
-            return model, features, df
+            return model, features
         except Exception as e:
-            st.warning(f"Error loading saved model: {e}. Retraining...")
+            st.warning(f"Note: Saved model loading failed ({e}). Re-training...")
     
     # Fallback: Train model on the fly
-    try:
-        df = pd.read_excel('data/hr_analytics.xlsx')
-        df_model = pd.get_dummies(df, columns=['Department', 'salary'], drop_first=True)
-        X = df_model.drop('left', axis=1)
-        y = df_model['left']
-        model = RandomForestClassifier(n_estimators=100, random_state=42)
-        model.fit(X, y)
-        return model, list(X.columns), df
-    except Exception as e:
-        st.error(f"Fatal Error: Could not load data or train model. {e}")
-        st.stop()
+    data = load_data()
+    if data is not None:
+        try:
+            df_model = pd.get_dummies(data, columns=['Department', 'salary'], drop_first=True)
+            X = df_model.drop('left', axis=1)
+            y = df_model['left']
+            model = RandomForestClassifier(n_estimators=100, random_state=42)
+            model.fit(X, y)
+            return model, list(X.columns)
+        except Exception as e:
+            st.error(f"Error training fallback model: {e}")
+            return None, None
+    return None, None
 
-model, features, df = load_assets()
+# Initialization
+df = load_data()
+model, features = load_model()
+
+if df is None or model is None:
+    st.error("The application could not initialize. Please check your data folder.")
+    st.stop()
 
 # Sidebar
 st.sidebar.title("🏢 HR Insights Pro")
@@ -59,7 +73,7 @@ st.sidebar.info("Advanced platform for employee retention analysis and predictiv
 st.title("HR Analytics & Retention Dashboard")
 m1, m2, m3, m4 = st.columns(4)
 attrition_rate = (df['left'].mean() * 100)
-with m1: st.metric("Attrition Rate", f"{attrition_rate:.1f}%", delta=f"{attrition_rate - 20:.1f}%", delta_color="inverse")
+with m1: st.metric("Attrition Rate", f"{attrition_rate:.1f}%")
 with m2: st.metric("Total Workforce", f"{len(df):,}")
 with m3: st.metric("Avg Satisfaction", f"{df['satisfaction_level'].mean():.2f}")
 with m4: st.metric("Avg Monthly Hours", f"{df['average_montly_hours'].mean():.0f}h")
@@ -72,12 +86,11 @@ tab1, tab2 = st.tabs(["🔮 Predict Attrition", "📊 Workforce Analytics"])
 # TAB 1: PREDICTION
 with tab1:
     st.header("Predict Individual Employee Risk")
-    st.write("Adjust the parameters below to assess the likelihood of an employee leaving.")
     
     with st.expander("📝 Employee Input Form", expanded=True):
         col1, col2, col3 = st.columns(3)
         with col1:
-            satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.5, help="Current satisfaction score of the employee")
+            satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.5)
             last_eval = st.slider("Last Evaluation", 0.0, 1.0, 0.7)
             num_projects = st.number_input("Number of Projects", 1, 10, 3)
         with col2:
@@ -118,7 +131,6 @@ with tab1:
                 mode = "gauge+number",
                 value = prob * 100,
                 domain = {'x': [0, 1], 'y': [0, 1]},
-                title = {'text': "Attrition Probability %"},
                 gauge = {
                     'axis': {'range': [None, 100]},
                     'bar': {'color': "#007bff"},
@@ -132,14 +144,12 @@ with tab1:
         with res_col2:
             st.subheader("Decision Breakdown")
             if prob > 0.7:
-                st.error("⚠️ CRITICAL: This employee is at extremely high risk of leaving.")
+                st.error("⚠️ CRITICAL: High Risk of Attrition.")
             elif prob > 0.3:
-                st.warning("⚡ WARNING: Moderate risk. Monitor engagement levels.")
+                st.warning("⚡ WARNING: Moderate Risk.")
             else:
-                st.success("✅ STABLE: Low risk of attrition.")
+                st.success("✅ STABLE: Low Risk.")
             
-            # Feature Importance for this specific model (Random Forest Global)
-            # note: a real SHAP view would be better but this works for demo
             st.write("**Top Drivers for this Prediction:**")
             importances = model.feature_importances_
             feat_imp = pd.Series(importances, index=features).sort_values(ascending=False).head(5)
@@ -149,39 +159,26 @@ with tab1:
 
 # TAB 2: ANALYTICS
 with tab2:
-    st.header("Company-wide Workforce Insights")
+    st.header("Workforce Insights Dashboard")
     
     c1, c2 = st.columns(2)
-    
     with c1:
-        # Attrition by Dept
         dept_attr = df.groupby('Department')['left'].mean().reset_index().sort_values(by='left', ascending=False)
-        fig_dept = px.bar(dept_attr, x='Department', y='left', title="Attrition Rate by Department",
-                         color='left', color_continuous_scale='Reds', labels={'left': 'Attrition Rate'})
+        fig_dept = px.bar(dept_attr, x='Department', y='left', title="Attrition Rate by Department")
         st.plotly_chart(fig_dept, use_container_width=True)
-        
     with c2:
-        # Satisfaction Level Distribution
-        fig_sat = px.histogram(df, x='satisfaction_level', color='left', barmode='overlay',
-                              title="Employee Satisfaction vs Retention",
-                              labels={'left': 'Left (1)', 'satisfaction_level': 'Satisfaction score'})
+        fig_sat = px.histogram(df, x='satisfaction_level', color='left', barmode='overlay', title="Satisfaction vs Retention")
         st.plotly_chart(fig_sat, use_container_width=True)
 
     c3, c4 = st.columns(2)
-    
     with c3:
-        # Tenure vs Attrition
         tenure_attr = df.groupby('time_spend_company')['left'].mean().reset_index()
-        fig_ten = px.line(tenure_attr, x='time_spend_company', y='left', title="Retention Risk by Tenure (Years)",
-                         markers=True, labels={'left': 'Risk Probability', 'time_spend_company': 'Years at Company'})
+        fig_ten = px.line(tenure_attr, x='time_spend_company', y='left', title="Risk by Tenure", markers=True)
         st.plotly_chart(fig_ten, use_container_width=True)
-        
     with c4:
-        # Salary impact
         sal_attr = df.groupby('salary')['left'].mean().reset_index()
-        fig_sal = px.pie(sal_attr, values='left', names='salary', title="Impact of Salary on Attrition",
-                        hole=.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+        fig_sal = px.pie(sal_attr, values='left', names='salary', title="Salary vs Attrition", hole=.4)
         st.plotly_chart(fig_sal, use_container_width=True)
 
 st.sidebar.markdown("---")
-st.sidebar.caption("v2.1 Advanced Release | Developed by Shweta")
+st.sidebar.caption("v2.2 Stable Release | Developed by Shweta")
