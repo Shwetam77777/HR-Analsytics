@@ -21,27 +21,27 @@ To get the project up and running in less than 2 minutes:
 
 ---
 
-## 📸 Project Demo
-### 1. Main Dashboard
-Overview of company-wide metrics and individual employee risk assessment.
-![Dashboard Overview](assets/dashboard_overview.png)
+## 📸 Project Demo (v3.0 Advanced)
 
-### 2. Prediction Analysis
-Detailed breakdown of risk factors (Salary, Tenure, etc.) for a specific employee.
-![Risk Analysis](assets/prediction_result.png)
+### 1. Global Analytics Command Center
+Interactive filtering by department, visualized with cluster maps and distribution charts.
+![Dashboard Analytics](assets/dashboard_v3_analytics.png)
+
+### 2. Predictive Risk & Retention Simulator
+Predicts attrition risk and includes a **"What-If" Analysis** tool to simulate how salary hikes or promotions can reduce turnover.
+![Retention Simulator](assets/dashboard_v3_prediction.png)
 
 ---
 
 ## 📌 Project Overview
 Successfully predicting employee attrition is vital for any organization. This project leverages **HR Analytics** to identify factors driving employee turnover and provides an interactive tool for predicting potential attrition using state-of-the-art machine learning models.
 
-## 🚀 Key Improvements (v2.1)
-I have transformed this repository into a high-performance HR Analytics Platform:
-- **Performance Optimized**: Models are pre-trained and serialized using `joblib` for instant app loading.
-- **Advanced Interactive Dashboard**: Built a multi-tab **Streamlit Pro** interface.
-- **Visual Analytics**: Interactive Plotly charts for department-wise attrition, satisfaction distributions, and tenure risk lines.
-- **Predictive Gauge**: Added a real-time risk gauge with feature influence breakdown for individual assessments.
-- **Professional Architecture**: Separated training scripts and model binaries for production readiness.
+## 🚀 Key Improvements (v3.0)
+I have transformed this repository into an Advanced HR Intelligence System:
+- **🧠 Retention Strategy Simulator**: A Prescriptive Analytics tool that tells HR *how* to retain employees (e.g., "Raising salary reduces risk by 15%").
+- **🎛️ Dynamic BI Dashboard**: Global sidebar filters allow deep-diving into specific departments (Sales, R&D, etc.).
+- **⚡ High-Performance Architecture**: Models are pre-trained and serialized for instant loading.
+- **🛡️ Cloud-Native Stability**: Robust error handling and fallback training for seamless deployment.
 
 ---
 
