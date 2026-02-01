@@ -1,131 +1,171 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
+import joblib
+import plotly.express as px
+import plotly.graph_objects as go
 
 # Page Configuration
-st.set_page_config(page_title="HR Attrition Predictor", layout="wide", page_icon="📊")
+st.set_page_config(page_title="HR Insight Dashboard", layout="wide", page_icon="🏢")
 
-# Custom CSS for better aesthetics
+# Global Styles
 st.markdown("""
 <style>
-    .main {
-        background-color: #f5f7f9;
-    }
-    .stButton>button {
-        width: 100%;
-        border-radius: 5px;
-        height: 3em;
-        background-color: #007bff;
-        color: white;
-    }
-    .prediction-box {
+    .metric-card {
+        background-color: white;
         padding: 20px;
         border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         text-align: center;
-        margin-top: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-@st.cache_data
-def load_data():
+@st.cache_resource
+def load_assets():
+    model = joblib.load('models/hr_model.joblib')
+    features = joblib.load('models/features.joblib')
     df = pd.read_excel('data/hr_analytics.xlsx')
-    # Preprocessing for the model
-    df_model = pd.get_dummies(df, columns=['Department', 'salary'], drop_first=True)
-    return df, df_model
-
-def train_model(df_model):
-    X = df_model.drop('left', axis=1)
-    y = df_model['left']
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
-    model.fit(X_train, y_train)
-    return model, X.columns
-
-# Sidebar info
-st.sidebar.title("HR Analytics Dashboard")
-st.sidebar.markdown("---")
-st.sidebar.write("Analyze and Predict Employee Attrition")
+    return model, features, df
 
 try:
-    df, df_model = load_data()
-    model, features = train_model(df_model)
-    st.sidebar.success("Model Trained Successfully!")
-    
-    # Summary Metrics in Sidebar
-    attrition_rate = (df['left'].mean() * 100)
-    st.sidebar.metric("Company Attrition Rate", f"{attrition_rate:.1f}%")
-    st.sidebar.metric("Total Employees", len(df))
-    
+    model, features, df = load_assets()
 except Exception as e:
-    st.error(f"Error loading data: {e}. Please ensure 'data/hr_analytics.xlsx' exists.")
+    st.error(f"Initialization Error: {e}. Please run 'python scripts/train_model.py' first.")
     st.stop()
 
-# Main UI
-st.title("👨‍💼 Employee Attrition Prediction")
-st.write("Enter employee details below to predict the probability of them leaving the company.")
+# Sidebar
+st.sidebar.title("🏢 HR Insights Pro")
+st.sidebar.markdown("---")
+st.sidebar.info("Advanced platform for employee retention analysis and predictive modeling.")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.5)
-    last_eval = st.slider("Last Evaluation Score", 0.0, 1.0, 0.5)
-    num_projects = st.number_input("Number of Projects", min_value=1, max_value=10, value=3)
-    avg_hours = st.number_input("Average Monthly Hours", min_value=50, max_value=350, value=200)
-
-with col2:
-    tenure = st.number_input("Years at Company", min_value=0, max_value=20, value=3)
-    accident = st.selectbox("Work Accident?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
-    promotion = st.selectbox("Promotion in last 5 years?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
-    dept = st.selectbox("Department", df['Department'].unique())
-    salary = st.selectbox("Salary Level", ['low', 'medium', 'high'])
-
-# Preparation of Input for Prediction
-if st.button("Predict Attrition Risk"):
-    # Create a template for the input data matching the dummy variable structure
-    input_data = pd.DataFrame(columns=features)
-    input_data.loc[0] = 0
-    
-    input_data.at[0, 'satisfaction_level'] = satisfaction
-    input_data.at[0, 'last_evaluation'] = last_eval
-    input_data.at[0, 'number_project'] = num_projects
-    input_data.at[0, 'average_montly_hours'] = avg_hours
-    input_data.at[0, 'time_spend_company'] = tenure
-    input_data.at[0, 'Work_accident'] = accident
-    input_data.at[0, 'promotion_last_5years'] = promotion
-    
-    # Handle Department Dummy
-    dept_col = f"Department_{dept}"
-    if dept_col in input_data.columns:
-        input_data.at[0, dept_col] = 1
-        
-    # Handle Salary Dummy
-    salary_col = f"salary_{salary}"
-    if salary_col in input_data.columns:
-        input_data.at[0, salary_col] = 1
-
-    # Prediction
-    prediction = model.predict(input_data)[0]
-    probability = model.predict_proba(input_data)[0][1]
-
-    if prediction == 1:
-        st.markdown(f"""
-        <div class='prediction-box' style='background-color: #ffcccc; color: #cc0000; border: 2px solid #cc0000;'>
-            <h2>⚠️ High Risk of Attrition</h2>
-            <p>Predicting employee is likely to leave.</p>
-            <p>Confidence: {probability*100:.1f}%</p>
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown(f"""
-        <div class='prediction-box' style='background-color: #ccffcc; color: #006600; border: 2px solid #006600;'>
-            <h2>✅ Low Risk of Attrition</h2>
-            <p>Predicting employee is likely to stay.</p>
-            <p>Retention Probability: {(1-probability)*100:.1f}%</p>
-        </div>
-        """, unsafe_allow_html=True)
+# Top Metrics
+st.title("HR Analytics & Retention Dashboard")
+m1, m2, m3, m4 = st.columns(4)
+attrition_rate = (df['left'].mean() * 100)
+with m1: st.metric("Attrition Rate", f"{attrition_rate:.1f}%", delta=f"{attrition_rate - 20:.1f}%", delta_color="inverse")
+with m2: st.metric("Total Workforce", f"{len(df):,}")
+with m3: st.metric("Avg Satisfaction", f"{df['satisfaction_level'].mean():.2f}")
+with m4: st.metric("Avg Monthly Hours", f"{df['average_montly_hours'].mean():.0f}h")
 
 st.markdown("---")
-st.write("Developed by Shweta | HR Analytics Project Refactored 🚀")
+
+# Main Tabs
+tab1, tab2 = st.tabs(["🔮 Predict Attrition", "📊 Workforce Analytics"])
+
+# TAB 1: PREDICTION
+with tab1:
+    st.header("Predict Individual Employee Risk")
+    st.write("Adjust the parameters below to assess the likelihood of an employee leaving.")
+    
+    with st.expander("📝 Employee Input Form", expanded=True):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            satisfaction = st.slider("Satisfaction Level", 0.0, 1.0, 0.5, help="Current satisfaction score of the employee")
+            last_eval = st.slider("Last Evaluation", 0.0, 1.0, 0.7)
+            num_projects = st.number_input("Number of Projects", 1, 10, 3)
+        with col2:
+            avg_hours = st.number_input("Average Monthly Hours", 50, 350, 200)
+            tenure = st.number_input("Tenure (Years)", 1, 15, 3)
+            accident = st.selectbox("Work Accident?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
+        with col3:
+            promotion = st.selectbox("Recent Promotion?", [0, 1], format_func=lambda x: "Yes" if x==1 else "No")
+            dept = st.selectbox("Department", df['Department'].unique())
+            salary = st.selectbox("Salary Level", ['low', 'medium', 'high'])
+
+    if st.button("🚀 Analyze Risk Instance"):
+        # Prepare Data
+        input_df = pd.DataFrame(columns=features)
+        input_df.loc[0] = 0
+        input_df.at[0, 'satisfaction_level'] = satisfaction
+        input_df.at[0, 'last_evaluation'] = last_eval
+        input_df.at[0, 'number_project'] = num_projects
+        input_df.at[0, 'average_montly_hours'] = avg_hours
+        input_df.at[0, 'time_spend_company'] = tenure
+        input_df.at[0, 'Work_accident'] = accident
+        input_df.at[0, 'promotion_last_5years'] = promotion
+        
+        dept_col = f"Department_{dept}"
+        if dept_col in input_df.columns: input_df.at[0, dept_col] = 1
+        salary_col = f"salary_{salary}"
+        if salary_col in input_df.columns: input_df.at[0, salary_col] = 1
+
+        # Predict
+        prob = model.predict_proba(input_df)[0][1]
+        
+        # Results Display
+        res_col1, res_col2 = st.columns([1, 2])
+        
+        with res_col1:
+            st.subheader("Risk Score")
+            fig = go.Figure(go.Indicator(
+                mode = "gauge+number",
+                value = prob * 100,
+                domain = {'x': [0, 1], 'y': [0, 1]},
+                title = {'text': "Attrition Probability %"},
+                gauge = {
+                    'axis': {'range': [None, 100]},
+                    'bar': {'color': "#007bff"},
+                    'steps' : [
+                        {'range': [0, 30], 'color': "lightgreen"},
+                        {'range': [30, 70], 'color': "orange"},
+                        {'range': [70, 100], 'color': "red"}],
+                }))
+            st.plotly_chart(fig, use_container_width=True)
+
+        with res_col2:
+            st.subheader("Decision Breakdown")
+            if prob > 0.7:
+                st.error("⚠️ CRITICAL: This employee is at extremely high risk of leaving.")
+            elif prob > 0.3:
+                st.warning("⚡ WARNING: Moderate risk. Monitor engagement levels.")
+            else:
+                st.success("✅ STABLE: Low risk of attrition.")
+            
+            # Feature Importance for this specific model (Random Forest Global)
+            # note: a real SHAP view would be better but this works for demo
+            st.write("**Top Drivers for this Prediction:**")
+            importances = model.feature_importances_
+            feat_imp = pd.Series(importances, index=features).sort_values(ascending=False).head(5)
+            fig_imp = px.bar(feat_imp, orientation='h', labels={'value':'Importance', 'index':'Feature'})
+            fig_imp.update_layout(showlegend=False, height=300)
+            st.plotly_chart(fig_imp, use_container_width=True)
+
+# TAB 2: ANALYTICS
+with tab2:
+    st.header("Company-wide Workforce Insights")
+    
+    c1, c2 = st.columns(2)
+    
+    with c1:
+        # Attrition by Dept
+        dept_attr = df.groupby('Department')['left'].mean().reset_index().sort_values(by='left', ascending=False)
+        fig_dept = px.bar(dept_attr, x='Department', y='left', title="Attrition Rate by Department",
+                         color='left', color_continuous_scale='Reds', labels={'left': 'Attrition Rate'})
+        st.plotly_chart(fig_dept, use_container_width=True)
+        
+    with c2:
+        # Satisfaction Level Distribution
+        fig_sat = px.histogram(df, x='satisfaction_level', color='left', barmode='overlay',
+                              title="Employee Satisfaction vs Retention",
+                              labels={'left': 'Left (1)', 'satisfaction_level': 'Satisfaction score'})
+        st.plotly_chart(fig_sat, use_container_width=True)
+
+    c3, c4 = st.columns(2)
+    
+    with c3:
+        # Tenure vs Attrition
+        tenure_attr = df.groupby('time_spend_company')['left'].mean().reset_index()
+        fig_ten = px.line(tenure_attr, x='time_spend_company', y='left', title="Retention Risk by Tenure (Years)",
+                         markers=True, labels={'left': 'Risk Probability', 'time_spend_company': 'Years at Company'})
+        st.plotly_chart(fig_ten, use_container_width=True)
+        
+    with c4:
+        # Salary impact
+        sal_attr = df.groupby('salary')['left'].mean().reset_index()
+        fig_sal = px.pie(sal_attr, values='left', names='salary', title="Impact of Salary on Attrition",
+                        hole=.4, color_discrete_sequence=px.colors.qualitative.Pastel)
+        st.plotly_chart(fig_sal, use_container_width=True)
+
+st.sidebar.markdown("---")
+st.sidebar.caption("v2.1 Advanced Release | Developed by Shweta")

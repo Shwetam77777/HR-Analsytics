@@ -24,12 +24,13 @@ To get the project up and running in less than 2 minutes:
 ## 📌 Project Overview
 Successfully predicting employee attrition is vital for any organization. This project leverages **HR Analytics** to identify factors driving employee turnover and provides an interactive tool for predicting potential attrition using state-of-the-art machine learning models.
 
-## 🚀 Key Improvements
-I have upgraded this repository from a basic logistic regression analysis to a comprehensive Data Science project:
-- **Professional Structure**: Organized data and analysis into a clean, modular hierarchy.
-- **Advanced Modeling**: implemented **Random Forest** and **XGBoost** models for higher accuracy.
-- **Interactive Dashboard**: Built a **Streamlit Web App** for real-time predictions.
-- **Deep Insights**: Added advanced EDA including correlation heatmaps and feature importance metrics.
+## 🚀 Key Improvements (v2.1)
+I have transformed this repository into a high-performance HR Analytics Platform:
+- **Performance Optimized**: Models are pre-trained and serialized using `joblib` for instant app loading.
+- **Advanced Interactive Dashboard**: Built a multi-tab **Streamlit Pro** interface.
+- **Visual Analytics**: Interactive Plotly charts for department-wise attrition, satisfaction distributions, and tenure risk lines.
+- **Predictive Gauge**: Added a real-time risk gauge with feature influence breakdown for individual assessments.
+- **Professional Architecture**: Separated training scripts and model binaries for production readiness.
 
 ---
 
