@@ -21,6 +21,17 @@ To get the project up and running in less than 2 minutes:
 
 ---
 
+## 📸 Project Demo
+### 1. Main Dashboard
+Overview of company-wide metrics and individual employee risk assessment.
+![Dashboard Overview](assets/dashboard_overview.png)
+
+### 2. Prediction Analysis
+Detailed breakdown of risk factors (Salary, Tenure, etc.) for a specific employee.
+![Risk Analysis](assets/prediction_result.png)
+
+---
+
 ## 📌 Project Overview
 Successfully predicting employee attrition is vital for any organization. This project leverages **HR Analytics** to identify factors driving employee turnover and provides an interactive tool for predicting potential attrition using state-of-the-art machine learning models.
 
