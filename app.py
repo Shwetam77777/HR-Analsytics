@@ -4,6 +4,8 @@ import numpy as np
 import joblib
 import plotly.express as px
 import plotly.graph_objects as go
+from sklearn.ensemble import RandomForestClassifier
+import os
 
 # Page Configuration
 st.set_page_config(page_title="HR Insight Dashboard", layout="wide", page_icon="🏢")
@@ -23,13 +25,18 @@ st.markdown("""
 
 @st.cache_resource
 def load_assets():
+    # Attempt to load pre-trained assets
+    if os.path.exists('models/hr_model.joblib') and os.path.exists('models/features.joblib'):
+        try:
+            model = joblib.load('models/hr_model.joblib')
+            features = joblib.load('models/features.joblib')
+            df = pd.read_excel('data/hr_analytics.xlsx')
+            return model, features, df
+        except Exception as e:
+            st.warning(f"Error loading saved model: {e}. Retraining...")
+    
+    # Fallback: Train model on the fly
     try:
-        model = joblib.load('models/hr_model.joblib')
-        features = joblib.load('models/features.joblib')
-        df = pd.read_excel('data/hr_analytics.xlsx')
-        return model, features, df
-    except:
-        # Fallback: Train model on the fly if file is missing (useful for first-time cloud deploy)
         df = pd.read_excel('data/hr_analytics.xlsx')
         df_model = pd.get_dummies(df, columns=['Department', 'salary'], drop_first=True)
         X = df_model.drop('left', axis=1)
@@ -37,13 +44,11 @@ def load_assets():
         model = RandomForestClassifier(n_estimators=100, random_state=42)
         model.fit(X, y)
         return model, list(X.columns), df
+    except Exception as e:
+        st.error(f"Fatal Error: Could not load data or train model. {e}")
+        st.stop()
 
-try:
-    from sklearn.ensemble import RandomForestClassifier # Ensure imported for fallback
-    model, features, df = load_assets()
-except Exception as e:
-    st.error(f"Initialization Error: {e}. Please run 'python scripts/train_model.py' first.")
-    st.stop()
+model, features, df = load_assets()
 
 # Sidebar
 st.sidebar.title("🏢 HR Insights Pro")
